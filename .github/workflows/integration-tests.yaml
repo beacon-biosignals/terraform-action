@@ -31,8 +31,8 @@ jobs:
       - name: Validate apply
         run: |
           status="$(curl -fsSL -o /dev/null -w "%{http_code}" http://localhost:8000)"
-          if [[ "${status}" -ne 200 ]]; then
-              echo "$status"
+          if [[ "$status" -ne 200 ]]; then
+              echo "status=$status"
               docker ps
               exit 1
           fi
@@ -46,7 +46,10 @@ jobs:
             image: nginx:latest
       - name: Validate destroy
         run: |
-          if curl -fsSL -o http://localhost:8000; then
+          rc=0
+          curl -fsSL http://localhost:8000 || rc=$?
+          if [[ "$rc" -ne 0 ]]; then
+              echo "rc=$rc"
               docker ps
               exit 1
           fi
