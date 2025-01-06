@@ -1,0 +1,80 @@
+# Deleting Terraform on state alone isn't always possible:
+# https://github.com/hashicorp/terraform/issues/5425#issuecomment-194395754
+---
+inputs:
+  dir:
+    description: The working directory containing the Terraform project.
+    default: "."
+  workspace:
+    description: Name of the Terraform workspace to use during the operation.
+    required: false
+  lock:
+    description: Boolean which specifies if a state lock is to be held during the operation.
+    default: "true"
+  variables:
+    description: YAML or JSON object containing key/value pairs specifying input values.
+    required: false
+  token:
+    description: The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub.
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: Terraform variables
+      id: variables
+      shell: bash
+      run: |
+        # Terraform variables
+        set -eo pipefail
+        variables_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("root element must be an object") end')"
+
+        # Specify our multiline output using GH action flavored heredocs
+        # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+        {
+            echo "json<<EOF"
+            jq <<<"${variables_json}"
+            echo "EOF"
+        } | tee -a "$GITHUB_OUTPUT"
+      env:
+        variables: ${{ inputs.variables }}
+    - name: Terraform destroy
+      shell: bash
+      run: |
+        # Destroy
+        set -eo pipefail
+
+        # TODO: Add tests for JSON lists and values with spaces. If you aren't very careful can end up
+        # with `'-var=foo="a b"'` which looks like a positional argument to terraform.
+        var_flags=()
+        while read -r var; do
+            var_flags+=(-var "${var:?}")
+        done < <(jq -r 'to_entries[] | "\(.key)=\(.value | tostring)"' <<<"${variables_json}")
+
+        echo "::group::terraform init"
+        terraform init
+        echo "::endgroup::"
+
+        if terraform workspace select "${workspace:?}"; then
+            echo "::group::terraform destroy"
+            (set -x; terraform destroy -auto-approve -lock="$lock" -input=false "${var_flags[@]}")
+            echo "::endgroup::"
+
+            # The "default" workspace always exists:
+            # https://developer.hashicorp.com/terraform/language/state/workspaces#using-workspaces
+            terraform workspace select default
+
+            echo "::group::terraform workspace delete"
+            terraform workspace delete "${workspace:?}"
+            echo "::endgroup::"
+        fi
+      env:
+        # Allow HTTPS token access to remote modules. Using environmental variables to
+        # only temporarily modify the Git configuration.
+        GIT_CONFIG_COUNT: "1"
+        GIT_CONFIG_KEY_0: url.https://git:${{ inputs.token }}@github.com.insteadOf
+        GIT_CONFIG_VALUE_0: https://github.com
+
+        workspace: ${{ inputs.workspace }}
+        lock: ${{ inputs.lock }}
+        variables_json: ${{ steps.variables.outputs.json }}
+      working-directory: ${{ inputs.dir }}

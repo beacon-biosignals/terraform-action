@@ -1,0 +1,102 @@
+---
+inputs:
+  dir:
+    description: The working directory containing the Terraform project.
+    default: "."
+  workspace:
+    description: Name of the Terraform workspace to use during the operation.
+    required: false
+  lock:
+    description: Boolean which specifies if a state lock is to be held during the operation.
+    default: "true"
+  variables:
+    description: YAML or JSON object containing key/value pairs specifying input values.
+    required: false
+  token:
+    description: The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub.
+    default: ${{ github.token }}
+outputs:
+  json:
+    description: The raw JSON output provided by the Terraform output subcommand.
+    value: ${{ steps.outputs.outputs.json }}
+  json-kv:
+    description: JSON object containing key/value pairs of output values.
+    value: ${{ steps.outputs.outputs.json-kv }}
+runs:
+  using: composite
+  steps:
+    - name: Terraform variables
+      id: variables
+      shell: bash
+      run: |
+        # Terraform variables
+        set -eo pipefail
+        variables_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("root element must be an object") end')"
+
+        # Specify our multiline output using GH action flavored heredocs
+        # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+        {
+            echo "json<<EOF"
+            jq <<<"${variables_json}"
+            echo "EOF"
+        } | tee -a "$GITHUB_OUTPUT"
+      env:
+        variables: ${{ inputs.variables }}
+    - name: Terraform apply
+      shell: bash
+      run: |
+        # Execute
+        set -eo pipefail
+
+        # TODO: Add tests for JSON lists and values with spaces. If you aren't very careful can end up
+        # with `'-var=foo="a b"'` which looks like a positional argument to terraform.
+        var_flags=()
+        while read -r var; do
+            var_flags+=(-var "${var:?}")
+        done < <(jq -r 'to_entries[] | "\(.key)=\(.value | tostring)"' <<<"${variables_json}")
+
+        echo "::group::terraform init"
+        terraform init
+        echo "::endgroup::"
+
+        if [[ -n "$workspace" ]]; then
+            echo "::group::set workspace"
+            terraform workspace select -or-create "${workspace:?}"
+            echo "::endgroup::"
+        fi
+
+        echo "::group::terraform apply"
+        (set -x; terraform apply -auto-approve -lock="$lock" -input=false "${var_flags[@]}")
+        echo "::endgroup::"
+      env:
+        # Allow HTTPS token access to remote modules. Using environmental variables to
+        # only temporarily modify the Git configuration.
+        GIT_CONFIG_COUNT: "1"
+        GIT_CONFIG_KEY_0: url.https://git:${{ inputs.token }}@github.com.insteadOf
+        GIT_CONFIG_VALUE_0: https://github.com
+
+        workspace: ${{ inputs.workspace }}
+        lock: ${{ inputs.lock }}
+        variables_json: ${{ steps.variables.outputs.json }}
+      working-directory: ${{ inputs.dir }}
+    - name: Terraform outputs
+      id: outputs
+      shell: bash
+      run: |
+        # Terraform outputs
+        # https://developer.hashicorp.com/terraform/cli/commands/output
+        json="$(terraform output -json)"
+
+        # Specify our multiline output using GH action flavored heredocs
+        # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+        {
+            echo "json<<EOF"
+            jq <<<"${json:?}"
+            echo "EOF"
+
+            # Remove metadata from output
+            echo "json-kv<<EOF"
+            jq 'with_entries({key: .key, value: .value.value})' <<<"${json:?}"
+            echo "EOF"
+        } | tee -a "$GITHUB_OUTPUT"
+      working-directory: ${{ inputs.dir }}
