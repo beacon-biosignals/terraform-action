@@ -1,0 +1,69 @@
+---
+name: Integration Tests
+on:
+  pull_request:
+    paths:
+      - "apply/action.yaml"
+      - "destroy/action.yaml"
+      - ".github/workflows/integration-tests.yaml"
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: action/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
+          # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
+          terraform_version: "~1.9"
+      - name: Deploy Terraform resources
+        id: terraform
+        uses: ./apply@v1
+        with:
+          dir: .github/terraform
+          workspace: ${{ github.event.number }}
+          variables: |-
+            image: nginx:latest
+      - run: |
+          docker ps
+      # - name: Output JSON
+      #   run: |
+      #     if [[ "${output_json}" != "${expected_json}" ]]; then
+      #         cat <<<"${output_json}" >"output"
+      #         cat <<<"${expected_json}" >"expected"
+      #         diff output expected | cat -te
+      #         exit 1
+      #     fi
+      #   env:
+      #     output_json: ${{ needs.setup-complex.outputs.results-json }}
+      #     expected_json: |-
+      #       [
+      #         {
+      #           "name": "App One",
+      #           "repo": "user/app1",
+      #           "version_string": "1.0",
+      #           "version_number": 1
+      #         },
+      #         {
+      #           "name": "App One",
+      #           "repo": "user/app1",
+      #           "version_string": "2.0",
+      #           "version_number": 2
+      #         },
+      #         {
+      #           "name": "App Two",
+      #           "repo": "user/app2",
+      #           "version_string": "1.0",
+      #           "version_number": 1
+      #         },
+      #         {
+      #           "name": "App Two",
+      #           "repo": "user/app2",
+      #           "version_string": "2.0",
+      #           "version_number": 2
+      #         }
+      #       ]
