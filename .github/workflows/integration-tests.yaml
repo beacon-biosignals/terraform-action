@@ -22,7 +22,7 @@ jobs:
           terraform_version: "~1.9"
       - name: Deploy Terraform resources
         id: terraform
-        uses: ./apply@v1
+        uses: ./apply
         with:
           dir: .github/terraform
           workspace: ${{ github.event.number }}
