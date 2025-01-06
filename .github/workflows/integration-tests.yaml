@@ -28,42 +28,23 @@ jobs:
           workspace: ${{ github.event.number }}
           variables: |-
             image: nginx:latest
-      - run: |
+      - name: Validate apply
+        run: |
+          status="$(curl -fsSL -o /dev/null -w "%{http_code}" http://localhost:8000)"
+          if [[ "${status}" -ne 200 ]]; then
+              echo "$status"
+              docker ps
+              exit 1
+          fi
+      - name: Destroy Terraform resources
+        uses: ./destroy
+        with:
+          with:
+          dir: .github/terraform
+          workspace: ${{ github.event.number }}
+          variables: |-
+            image: nginx:latest
+      - name: Validate destroy
+        run: |
+          curl http://localhost:8000
           docker ps
-      # - name: Output JSON
-      #   run: |
-      #     if [[ "${output_json}" != "${expected_json}" ]]; then
-      #         cat <<<"${output_json}" >"output"
-      #         cat <<<"${expected_json}" >"expected"
-      #         diff output expected | cat -te
-      #         exit 1
-      #     fi
-      #   env:
-      #     output_json: ${{ needs.setup-complex.outputs.results-json }}
-      #     expected_json: |-
-      #       [
-      #         {
-      #           "name": "App One",
-      #           "repo": "user/app1",
-      #           "version_string": "1.0",
-      #           "version_number": 1
-      #         },
-      #         {
-      #           "name": "App One",
-      #           "repo": "user/app1",
-      #           "version_string": "2.0",
-      #           "version_number": 2
-      #         },
-      #         {
-      #           "name": "App Two",
-      #           "repo": "user/app2",
-      #           "version_string": "1.0",
-      #           "version_number": 1
-      #         },
-      #         {
-      #           "name": "App Two",
-      #           "repo": "user/app2",
-      #           "version_string": "2.0",
-      #           "version_number": 2
-      #         }
-      #       ]
