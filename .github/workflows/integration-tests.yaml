@@ -46,5 +46,7 @@ jobs:
             image: nginx:latest
       - name: Validate destroy
         run: |
-          curl http://localhost:8000
-          docker ps
+          if curl -fsSL -o http://localhost:8000; then
+              docker ps
+              exit 1
+          fi
