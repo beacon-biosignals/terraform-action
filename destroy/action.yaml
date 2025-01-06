@@ -3,7 +3,7 @@
 ---
 inputs:
   dir:
-    description: Working directory to use.
+    description: The working directory containing the Terraform project.
     default: "."
   workspace:
     description: Name of the Terraform workspace to use during the operation.
