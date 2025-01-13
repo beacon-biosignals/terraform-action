@@ -28,6 +28,7 @@ jobs:
           workspace: ${{ github.event.number }}
           variables: |-
             image: nginx:latest
+            optional:
       - name: Validate apply
         run: |
           status="$(curl -fsSL -o /dev/null -w "%{http_code}" http://localhost:8000)"
@@ -44,6 +45,7 @@ jobs:
           workspace: ${{ github.event.number }}
           variables: |-
             image: nginx:latest
+            optional:
       - name: Validate destroy
         run: |
           rc=0

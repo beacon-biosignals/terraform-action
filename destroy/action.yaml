@@ -43,12 +43,16 @@ runs:
         # Destroy
         set -eo pipefail
 
+        # Convert JSON variables into CLI flags. We'll remove entries with `null` values as we cannot
+        # pass those into Terraform:
+        # https://github.com/hashicorp/terraform/issues/29078
+        #
         # TODO: Add tests for JSON lists and values with spaces. If you aren't very careful can end up
         # with `'-var=foo="a b"'` which looks like a positional argument to terraform.
         var_flags=()
         while read -r var; do
             var_flags+=(-var "${var:?}")
-        done < <(jq -r 'to_entries[] | "\(.key)=\(.value | tostring)"' <<<"${variables_json}")
+        done < <(jq -r 'to_entries[] | select(.value != null) | "\(.key)=\(.value | tostring)"' <<<"${variables_json}")
 
         echo "::group::terraform init"
         terraform init

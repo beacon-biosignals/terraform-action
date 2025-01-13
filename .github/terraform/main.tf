@@ -14,6 +14,16 @@ variable "image" {
   type = string
 }
 
+variable "optional" {
+  type    = string
+  default = null
+
+  validation {
+    condition = var.optional == null || var.optional == "foo"
+    error_message = "`optional` must only be `null` or `\"foo\"`."
+  }
+}
+
 resource "docker_image" "web_server" {
   name         = var.image
   keep_locally = false
