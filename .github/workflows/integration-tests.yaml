@@ -45,6 +45,7 @@ jobs:
           workspace: ${{ github.event.number }}
           variables: |-
             image: nginx:latest
+            optional:
       - name: Validate destroy
         run: |
           rc=0
