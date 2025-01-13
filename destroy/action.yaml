@@ -43,7 +43,7 @@ runs:
         # Destroy
         set -eo pipefail
 
-                # Convert JSON variables into CLI flags. We'll remove entries with `null` values as we cannot
+        # Convert JSON variables into CLI flags. We'll remove entries with `null` values as we cannot
         # pass those into Terraform:
         # https://github.com/hashicorp/terraform/issues/29078
         #
