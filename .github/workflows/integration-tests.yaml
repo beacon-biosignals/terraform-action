@@ -7,7 +7,7 @@ on:
       - "destroy/action.yaml"
       - ".github/workflows/integration-tests.yaml"
   push:
-    branches: ["main"]
+    branches: ["main", "cv/push"]
     tags: ["*"]
     paths:
       - "apply/action.yaml"
