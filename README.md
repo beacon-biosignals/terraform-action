@@ -62,3 +62,7 @@ jobs:
           variables: |-
             name: Demo
 ```
+
+## Permissions
+
+No [job permissions](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs) are required to run this action.
