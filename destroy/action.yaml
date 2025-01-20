@@ -1,6 +1,11 @@
 # Deleting Terraform on state alone isn't always possible:
 # https://github.com/hashicorp/terraform/issues/5425#issuecomment-194395754
 ---
+name: Terraform Destroy
+description: Perform a Terraform destroy using the provided inputs.
+branding:
+  icon: file-minus
+  color: red
 inputs:
   dir:
     description: The working directory containing the Terraform project.
