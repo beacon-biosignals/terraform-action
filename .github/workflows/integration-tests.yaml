@@ -18,7 +18,7 @@ env:
   # Use separate Terraform workspaces for PRs, tags, and each commit on "main".
   workspace: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) ||
                 (github.event_name == 'push' && (github.ref_type == 'tag' && format('tag-{0}', github.ref_name) || format('sha-{0}', github.sha)) ||
-                'unknown' }}
+                'unknown') }}
 
 jobs:
   test:
