@@ -6,6 +6,19 @@ on:
       - "apply/action.yaml"
       - "destroy/action.yaml"
       - ".github/workflows/integration-tests.yaml"
+  push:
+    branches: ["main"]
+    tags: ["*"]
+    paths:
+      - "apply/action.yaml"
+      - "destroy/action.yaml"
+      - ".github/workflows/integration-tests.yaml"
+
+env:
+  # Use separate Terraform workspaces for PRs, tags, and each commit on "main".
+  workspace: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) ||
+                (github.event_name == 'push' && (github.ref_type == 'tag' && format('tag-{0}', github.ref_name) || format('sha-{0}', github.sha)) ||
+                'unknown') }}
 
 jobs:
   test:
@@ -25,7 +38,7 @@ jobs:
         uses: ./apply
         with:
           dir: .github/terraform
-          workspace: ${{ github.event.number }}
+          workspace: ${{ env.workspace }}
           variables: |-
             image: nginx:latest
             optional:
@@ -42,7 +55,7 @@ jobs:
         with:
           with:
           dir: .github/terraform
-          workspace: ${{ github.event.number }}
+          workspace: ${{ env.workspace }}
           variables: |-
             image: nginx:latest
             optional:
