@@ -53,7 +53,6 @@ jobs:
       - name: Destroy Terraform resources
         uses: ./destroy
         with:
-          with:
           dir: .github/terraform
           workspace: ${{ env.workspace }}
           variables: |-

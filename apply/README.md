@@ -1,6 +1,6 @@
 # Terraform Action: Apply
 
-Performs a Terraform plan and [apply](https://developer.hashicorp.com/terraform/cli/commands/apply) using the provided inputs.
+Perform a Terraform plan and [apply](https://developer.hashicorp.com/terraform/cli/commands/apply) using the provided inputs.
 
 ## Inputs
 

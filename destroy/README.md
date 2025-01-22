@@ -1,6 +1,6 @@
 # Terraform Action: Destroy
 
-Performs a Terraform [destroy](https://developer.hashicorp.com/terraform/cli/commands/destroy) (`apply -destroy`) using the provided inputs.
+Perform a Terraform [destroy](https://developer.hashicorp.com/terraform/cli/commands/destroy) (`apply -destroy`) using the provided inputs.
 
 ## Inputs
 
