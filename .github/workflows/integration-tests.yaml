@@ -78,19 +78,31 @@ jobs:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
           terraform_version: "~1.9"
-      - name: Deploy undeclared
+      - id: deploy-undeclared
         uses: ./apply
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: "required"
+            required: required
             dne: value undeclared for variable
-      - name: Deploy allow undeclared
+        continue-on-error: true
+      - name: Validate
+        run: |
+          [[ "$outcome" == "failure" ]] || exit 1
+        env:
+          outcome: ${{ steps.deploy-undeclared.outcome }}
+      - id: deploy-allow-undeclared
         uses: ./apply
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: "required"
+            required: required
             dne: value undeclared for variable
           undeclared: |
             - dne
+        continue-on-error: true
+      - name: Validate
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.deploy-allow=undeclared.outcome }}
