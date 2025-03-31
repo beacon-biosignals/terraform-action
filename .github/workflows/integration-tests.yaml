@@ -66,6 +66,34 @@ jobs:
               exit 1
           fi
 
+  test-null-variable:
+    name: Test Null Variable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
+          # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
+          terraform_version: "~1.9"
+      - id: deploy-null
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: required
+            optional: null
+        continue-on-error: true
+      - name: Validate
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+          jq -er '.optional == null' <<<"${json_kv}" || exit 1
+        env:
+          outcome: ${{ steps.deploy-null.outcome }}
+          json_kv: ${{ steps.deploy-null.outputs.json-kv }}
+
   test-undeclared-variable:
     name: Test Undeclared Variable
     runs-on: ubuntu-latest
@@ -78,7 +106,8 @@ jobs:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
           terraform_version: "~1.9"
-      - id: deploy-undeclared
+      - name: Deploy undeclared (failure)
+        id: deploy-undeclared-failure
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -90,8 +119,9 @@ jobs:
         run: |
           [[ "$outcome" == "failure" ]] || exit 1
         env:
-          outcome: ${{ steps.deploy-undeclared.outcome }}
-      - id: deploy-allow-undeclared
+          outcome: ${{ steps.deploy-undeclared-failure.outcome }}
+      - name: Deploy undeclared (allowed)
+        id: deploy-undeclared-allowed
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -105,8 +135,9 @@ jobs:
         run: |
           [[ "$outcome" == "success" ]] || exit 1
         env:
-          outcome: ${{ steps.deploy-allow-undeclared.outcome }}
-      - id: deploy-allow-undeclared-declared
+          outcome: ${{ steps.deploy-undeclared-allowed.outcome }}
+      - name: Deploy undeclared (declared)
+        id: deploy-undeclared-declared
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -120,4 +151,4 @@ jobs:
         run: |
           [[ "$outcome" == "success" ]] || exit 1
         env:
-          outcome: ${{ steps.deploy-allow-undeclared-declared.outcome }}
+          outcome: ${{ steps.deploy-undeclared-declared.outcome }}
