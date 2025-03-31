@@ -20,7 +20,7 @@ inputs:
   allow-undeclared:
     description: >-
       YAML or JSON list containing the names of variable keys which may safely be ignored
-      when the are specified as input but are undeclared by the called Terrafrom project.
+      when they are specified as input but are undeclared within the called Terraform project.
     required: false
   token:
     description: The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub.

@@ -6,13 +6,14 @@ Perform a Terraform [destroy](https://developer.hashicorp.com/terraform/cli/comm
 
 The `terraform-action/destroy` action supports the following inputs:
 
-| Name             | Description | Required | Example |
-|:-----------------|:------------|:---------|:--------|
-| `dir`            | The working directory containing the Terraform project. Defaults to `"."` | No | `".terraform"` |
-| `workspace`      | Name of the Terraform workspace to use during the operation. | No | `${{ github.event.number }}` |
-| `lock`           | Boolean which specifies if a state lock is to be held during the operation. May be set to `false` if utilizing GitHub action concurrency groups to restrict access. Defaults to `"true"` | No | `"true"` |
-| `variables`      | YAML or JSON object containing key/value pairs specifying [input values](https://developer.hashicorp.com/terraform/language/values/variables). | No | <pre><code class="language-yaml">image_id: ...&#10;availability_zone_names:&#10;  - us-east-1a&#10;  - us-east-1b</code></pre> |
-| `token`          | The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub. Defaults to `${{ github.token }}` | No | |
+| Name               | Description | Required | Example |
+|:-------------------|:------------|:---------|:--------|
+| `dir`              | The working directory containing the Terraform project. Defaults to `"."` | No | `".terraform"` |
+| `workspace`        | Name of the Terraform workspace to use during the operation. | No | `${{ github.event.number }}` |
+| `lock`             | Boolean which specifies if a state lock is to be held during the operation. May be set to `false` if utilizing GitHub action concurrency groups to restrict access. Defaults to `"true"` | No | `"true"` |
+| `variables`        | YAML or JSON object containing key/value pairs specifying [input values](https://developer.hashicorp.com/terraform/language/values/variables). | No | <pre><code class="language-yaml">image_id: ...&#10;availability_zone_names:&#10;  - us-east-1a&#10;  - us-east-1b</code></pre> |
+| `allow-undeclared` | YAML or JSON list containing the names of variable keys which may safely be ignored when they are specified as input but are undeclared within the called Terraform project. | No |<pre><code class="language-yaml">- availability_zone_names</code></pre> |
+| `token`            | The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub. Defaults to `${{ github.token }}` | No | |
 
 ## Outputs
 
