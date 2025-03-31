@@ -67,3 +67,50 @@ jobs:
               docker ps
               exit 1
           fi
+
+  test-undeclared-variable:
+    name: Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
+          # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
+          terraform_version: "~1.9"
+      - name: Deploy Terraform resources
+        id: terraform
+        uses: ./apply
+        with:
+          dir: .github/terraform
+          workspace: ${{ env.workspace }}
+          variables: |-
+            image: nginx:latest
+            dne: value undeclared for variable
+      # - name: Validate apply
+      #   run: |
+      #     status="$(curl -fsSL -o /dev/null -w "%{http_code}" http://localhost:8000)"
+      #     if [[ "$status" -ne 200 ]]; then
+      #         echo "status=$status"
+      #         docker ps
+      #         exit 1
+      #     fi
+      # - name: Destroy Terraform resources
+      #   uses: ./destroy
+      #   with:
+      #     dir: .github/terraform
+      #     workspace: ${{ env.workspace }}
+      #     variables: |-
+      #       image: nginx:latest
+      #       optional:
+      # - name: Validate destroy
+      #   run: |
+      #     rc=0
+      #     curl -fsSL http://localhost:8000 || rc=$?
+      #     if [[ "$rc" -ne 7 ]]; then
+      #         echo "rc=$rc"
+      #         docker ps
+      #         exit 1
+      #     fi
