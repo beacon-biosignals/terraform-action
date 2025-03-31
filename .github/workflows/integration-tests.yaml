@@ -79,7 +79,6 @@ jobs:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
           terraform_version: "~1.9"
       - name: Deploy undeclared
-        id: terraform
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -87,7 +86,6 @@ jobs:
             required: "required"
             dne: value undeclared for variable
       - name: Deploy allow undeclared
-        id: terraform
         uses: ./apply
         with:
           dir: .github/terraform/input-output
