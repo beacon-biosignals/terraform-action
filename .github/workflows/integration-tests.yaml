@@ -78,7 +78,15 @@ jobs:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
           terraform_version: "~1.9"
-      - name: Deploy Terraform resources
+      - name: Deploy undeclared
+        id: terraform
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: "required"
+            dne: value undeclared for variable
+      - name: Deploy allow undeclared
         id: terraform
         uses: ./apply
         with:
