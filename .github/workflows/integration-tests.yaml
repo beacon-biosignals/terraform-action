@@ -106,3 +106,18 @@ jobs:
           [[ "$outcome" == "success" ]] || exit 1
         env:
           outcome: ${{ steps.deploy-allow-undeclared.outcome }}
+      - id: deploy-allow-undeclared-declared
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: required
+            optional: foo
+          undeclared: |
+            - optional
+        continue-on-error: true
+      - name: Validate
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.deploy-allow-undeclared-declared.outcome }}
