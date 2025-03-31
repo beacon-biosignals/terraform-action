@@ -17,7 +17,7 @@ inputs:
   variables:
     description: YAML or JSON object containing key/value pairs specifying input values.
     required: false
-  undeclared:
+  allow-undeclared:
     description: >-
       YAML or JSON list containing the names of variable keys which may safely be ignored
       when the are specified as input but are undeclared by the called Terrafrom project.
@@ -42,7 +42,7 @@ runs:
         # Terraform variables
         set -eo pipefail
         variables_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("\"variables\" root element must be an object") end')"
-        undeclared_json="$(yq '. // []' -o json <<<"${undeclared}" | jq -r 'if type == "array" then . else error("\"undeclared\" root element must be a list") end')"
+        allow_undeclared_json="$(yq '. // []' -o json <<<"${allow_undeclared}" | jq -r 'if type == "array" then . else error("\"undeclared\" root element must be a list") end')"
 
         # Specify our multiline output using GH action flavored heredocs
         # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
@@ -51,13 +51,13 @@ runs:
             jq <<<"${variables_json}"
             echo "EOF"
 
-            echo "undeclared-json<<EOF"
-            jq <<<"${undeclared_json}"
+            echo "allow-undeclared-json<<EOF"
+            jq <<<"${allow_undeclared_json}"
             echo "EOF"
         } | tee -a "$GITHUB_OUTPUT"
       env:
         variables: ${{ inputs.variables }}
-        undeclared: ${{ inputs.undeclared }}
+        allow_undeclared: ${{ inputs.allow-undeclared }}
     - name: Terraform apply
       shell: bash
       run: |
@@ -70,16 +70,16 @@ runs:
         #
         # TODO: Add tests for JSON lists and values with spaces. If you aren't very careful can end up
         # with `'-var=foo="a b"'` which looks like a positional argument to terraform.
-        var_flags=()
-        env_vars=()
+        tf_var_flags=()
+        tf_var_envs=()
         while read -r json; do
             key="$(jq -re '.key' <<<"${json}")"
             value="$(jq -re '.value | tostring' <<<"${json}")"
 
-            if jq -e --arg key "$key" 'any(index($key))' <<<"${undeclared_json}"; then
-                env_vars+=(TF_VAR_${key}="${value}")
+            if jq -e --arg key "$key" 'any(index($key))' <<<"${allow_undeclared_json}"; then
+                tf_var_envs+=(TF_VAR_${key}="${value}")
             else
-                var_flags+=(-var "${key}=${value}")
+                tf_var_flags+=(-var "${key}=${value}")
             fi
         done < <(jq -cr 'to_entries[] | select(.value != null)' <<<"${variables_json}")
 
@@ -94,7 +94,7 @@ runs:
         fi
 
         echo "::group::terraform apply"
-        (set -x; env "${env_vars[@]}" terraform apply -auto-approve -lock="$lock" -input=false "${var_flags[@]}")
+        (set -x; env "${tf_var_envs[@]}" terraform apply -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
         echo "::endgroup::"
       env:
         # Allow HTTPS token access to remote modules. Using environmental variables to
@@ -106,7 +106,7 @@ runs:
         workspace: ${{ inputs.workspace }}
         lock: ${{ inputs.lock }}
         variables_json: ${{ steps.variables.outputs.variables-json }}
-        undeclared_json: ${{ steps.variables.outputs.undeclared-json }}
+        allow_undeclared_json: ${{ steps.variables.outputs.allow-undeclared-json }}
       working-directory: ${{ inputs.dir }}
     - name: Terraform outputs
       id: outputs

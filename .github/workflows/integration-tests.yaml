@@ -78,23 +78,38 @@ jobs:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
           terraform_version: "~1.9"
-      - name: Deploy null (implicit)
-        id: deploy-null-implicit
+
+      - name: Apply Null (implicit)
+        id: apply-null-implicit
         uses: ./apply
         with:
           dir: .github/terraform/input-output
           variables: |-
             required: foo
         continue-on-error: true
-      - name: Validate
+      - name: Validate Apply
         run: |
           [[ "$outcome" == "success" ]] || exit 1
           jq -e '.optional == null' <<<"${json_kv}" >/dev/null || exit 1
         env:
-          outcome: ${{ steps.deploy-null-implicit.outcome }}
-          json_kv: ${{ steps.deploy-null-implicit.outputs.json-kv }}
-      - name: Deploy null (explicit)
-        id: deploy-null-explicit
+          outcome: ${{ steps.apply-null-implicit.outcome }}
+          json_kv: ${{ steps.apply-null-implicit.outputs.json-kv }}
+      - name: Destroy Null (implicit)
+        id: destroy-null-implicit
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-null-implicit.outcome }}
+
+      - name: Apply Null (explicit)
+        id: apply-null-explicit
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -102,15 +117,30 @@ jobs:
             required: foo
             optional: null
         continue-on-error: true
-      - name: Validate
+      - name: Validate Apply
         run: |
           [[ "$outcome" == "success" ]] || exit 1
           jq -e '.optional == null' <<<"${json_kv}" >/dev/null || exit 1
         env:
-          outcome: ${{ steps.deploy-null-explicit.outcome }}
-          json_kv: ${{ steps.deploy-null-explicit.outputs.json-kv }}
-      - name: Deploy null (blank)
-        id: deploy-null-blank
+          outcome: ${{ steps.apply-null-explicit.outcome }}
+          json_kv: ${{ steps.apply-null-explicit.outputs.json-kv }}
+      - name: Destroy Null (explicit)
+        id: destroy-null-explicit
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional: null
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-null-explicit.outcome }}
+
+      - name: Apply Null (blank)
+        id: apply-null-blank
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -118,15 +148,30 @@ jobs:
             required: foo
             optional:
         continue-on-error: true
-      - name: Validate
+      - name: Validate Apply
         run: |
           [[ "$outcome" == "success" ]] || exit 1
           jq -e '.optional == null' <<<"${json_kv}" >/dev/null || exit 1
         env:
-          outcome: ${{ steps.deploy-null-blank.outcome }}
-          json_kv: ${{ steps.deploy-null-blank.outputs.json-kv }}
-      - name: Deploy null (invalid)
-        id: deploy-null-invalid
+          outcome: ${{ steps.apply-null-blank.outcome }}
+          json_kv: ${{ steps.apply-null-blank.outputs.json-kv }}
+      - name: Destroy Null (blank)
+        id: destroy-null-blank
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional:
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-null-blank.outcome }}
+
+      - name: Apply Null (invalid)
+        id: deploy-invalid
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -134,14 +179,27 @@ jobs:
             required: foo
             optional: ""  # Empty string isn't null
         continue-on-error: true
-      - name: Validate
+      - name: Validate Apply
         run: |
           [[ "$outcome" == "failure" ]] || exit 1
           [[ "$json_kv" == "" ]] || exit 1
         env:
-          outcome: ${{ steps.deploy-null-invalid.outcome }}
-          json_kv: ${{ steps.deploy-null-invalid.outputs.json-kv }}
-
+          outcome: ${{ steps.apply-null-invalid.outcome }}
+          json_kv: ${{ steps.apply-null-invalid.outputs.json-kv }}
+      - name: Destroy Null (invalid)
+        id: destroy-null-invalid
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional: ""  # Empty string isn't null
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-null-blank.outcome }}
 
   test-undeclared-variable:
     name: Test Undeclared Variable
@@ -155,8 +213,9 @@ jobs:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
           terraform_version: "~1.9"
-      - name: Deploy undeclared (failure)
-        id: deploy-undeclared-failure
+
+      - name: Apply Undeclared (failure)
+        id: apply-undeclared-failure
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -164,13 +223,28 @@ jobs:
             required: foo
             dne: bar
         continue-on-error: true
-      - name: Validate
+      - name: Validate Apply
         run: |
           [[ "$outcome" == "failure" ]] || exit 1
         env:
-          outcome: ${{ steps.deploy-undeclared-failure.outcome }}
-      - name: Deploy undeclared (allowed)
-        id: deploy-undeclared-allowed
+          outcome: ${{ steps.apply-undeclared-failure.outcome }}
+      - name: Destroy Undeclared (failure)
+        id: destroy-undeclared-failure
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            dne: bar
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "failure" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-undeclared-failure.outcome }}
+
+      - name: Apply Undeclared (allowed)
+        id: apply-undeclared-allowed
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -180,21 +254,38 @@ jobs:
           undeclared: |
             - dne
         continue-on-error: true
-      - name: Validate
+      - name: Validate Apply
         run: |
           [[ "$outcome" == "success" ]] || exit 1
           jq -e '.dne == null' <<<"${json_kv}" >/dev/null || exit 1
         env:
-          outcome: ${{ steps.deploy-undeclared-allowed.outcome }}
-          json_kv: ${{ steps.deploy-undeclared-allowed.outputs.json-kv }}
-      - name: Deploy undeclared (declared)
-        id: deploy-undeclared-declared
+          outcome: ${{ steps.apply-undeclared-allowed.outcome }}
+          json_kv: ${{ steps.apply-undeclared-allowed.outputs.json-kv }}
+      - name: Destroy Undeclared (allowed)
+        id: destroy-undeclared-allowed
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            dne: bar
+          undeclared: |
+            - dne
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-undeclared-allowed.outcome }}
+
+      - name: Apply Undeclared (declared)
+        id: apply-undeclared-declared
         uses: ./apply
         with:
           dir: .github/terraform/input-output
           variables: |-
             required: foo
-            optional: bar
+            optional: bar  # Pretend like `dne` was defined within the Terraform project
           undeclared: |
             - optional
         continue-on-error: true
@@ -203,5 +294,21 @@ jobs:
           [[ "$outcome" == "success" ]] || exit 1
           jq -e '.optional == "bar"' <<<"${json_kv}" >/dev/null || exit 1
         env:
-          outcome: ${{ steps.deploy-undeclared-declared.outcome }}
-          json_kv: ${{ steps.deploy-undeclared-declared.outputs.json-kv }}
+          outcome: ${{ steps.apply-undeclared-declared.outcome }}
+          json_kv: ${{ steps.apply-undeclared-declared.outputs.json-kv }}
+      - name: Destroy Undeclared (declared)
+        id: destroy-undeclared-declared
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional: bar  # Pretend like `dne` was defined within the Terraform project
+          undeclared: |
+            - optional
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-undeclared-declared.outcome }}

@@ -19,6 +19,11 @@ inputs:
   variables:
     description: YAML or JSON object containing key/value pairs specifying input values.
     required: false
+  allow-undeclared:
+    description: >-
+      YAML or JSON list containing the names of variable keys which may safely be ignored
+      when the are specified as input but are undeclared by the called Terrafrom project.
+    required: false
   token:
     description: The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub.
     default: ${{ github.token }}
@@ -31,33 +36,47 @@ runs:
       run: |
         # Terraform variables
         set -eo pipefail
-        variables_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("root element must be an object") end')"
+        variables_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("\"variables\" root element must be an object") end')"
+        allow_undeclared_json="$(yq '. // []' -o json <<<"${allow_undeclared}" | jq -r 'if type == "array" then . else error("\"undeclared\" root element must be a list") end')"
 
         # Specify our multiline output using GH action flavored heredocs
         # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
         {
-            echo "json<<EOF"
+            echo "variables-json<<EOF"
             jq <<<"${variables_json}"
+            echo "EOF"
+
+            echo "allow-undeclared-json<<EOF"
+            jq <<<"${allow_undeclared_json}"
             echo "EOF"
         } | tee -a "$GITHUB_OUTPUT"
       env:
         variables: ${{ inputs.variables }}
+        allow_undeclared: ${{ inputs.allow-undeclared }}
     - name: Terraform destroy
       shell: bash
       run: |
         # Destroy
         set -eo pipefail
 
-        # Convert JSON variables into CLI flags. We'll remove entries with `null` values as we cannot
-        # pass those into Terraform:
+        # Convert JSON variables into CLI flags or environmental variables. We'll remove
+        # entries with `null` values as we cannot pass those into Terraform:
         # https://github.com/hashicorp/terraform/issues/29078
         #
         # TODO: Add tests for JSON lists and values with spaces. If you aren't very careful can end up
         # with `'-var=foo="a b"'` which looks like a positional argument to terraform.
-        var_flags=()
-        while read -r var; do
-            var_flags+=(-var "${var:?}")
-        done < <(jq -r 'to_entries[] | select(.value != null) | "\(.key)=\(.value | tostring)"' <<<"${variables_json}")
+        tf_var_flags=()
+        tf_var_envs=()
+        while read -r json; do
+            key="$(jq -re '.key' <<<"${json}")"
+            value="$(jq -re '.value | tostring' <<<"${json}")"
+
+            if jq -e --arg key "$key" 'any(index($key))' <<<"${allow_undeclared_json}"; then
+                tf_var_envs+=(TF_VAR_${key}="${value}")
+            else
+                tf_var_flags+=(-var "${key}=${value}")
+            fi
+        done < <(jq -cr 'to_entries[] | select(.value != null)' <<<"${variables_json}")
 
         echo "::group::terraform init"
         terraform init
@@ -65,7 +84,7 @@ runs:
 
         if terraform workspace select "${workspace:?}"; then
             echo "::group::terraform destroy"
-            (set -x; terraform destroy -auto-approve -lock="$lock" -input=false "${var_flags[@]}")
+            (set -x; env "${tf_var_envs[@]}" terraform destroy -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
             echo "::endgroup::"
 
             # The "default" workspace always exists:
@@ -85,5 +104,6 @@ runs:
 
         workspace: ${{ inputs.workspace }}
         lock: ${{ inputs.lock }}
-        variables_json: ${{ steps.variables.outputs.json }}
+        variables_json: ${{ steps.variables.outputs.variables-json }}
+        allow_undeclared_json: ${{ steps.variables.outputs.allow-undeclared-json }}
       working-directory: ${{ inputs.dir }}
