@@ -105,4 +105,4 @@ jobs:
         run: |
           [[ "$outcome" == "success" ]] || exit 1
         env:
-          outcome: ${{ steps.deploy-allow=undeclared.outcome }}
+          outcome: ${{ steps.deploy-allow-undeclared.outcome }}
