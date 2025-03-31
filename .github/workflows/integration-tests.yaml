@@ -84,11 +84,7 @@ jobs:
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: {"key", "value"}
+            required: "required"
             dne: value undeclared for variable
           undeclared: |
             - dne
-      - name: Destroy Terraform resources
-        uses: ./destroy
-        with:
-          dir: .github/terraform/input-output

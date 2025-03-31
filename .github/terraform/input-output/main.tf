@@ -1,5 +1,5 @@
 variable "required" {
-  type = object
+  type = string
 }
 
 variable "optional" {
