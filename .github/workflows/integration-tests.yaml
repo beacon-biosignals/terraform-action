@@ -21,8 +21,8 @@ env:
                 'unknown') }}
 
 jobs:
-  test:
-    name: Test
+  test-web-server:
+    name: Test Web Server
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -37,11 +37,10 @@ jobs:
         id: terraform
         uses: ./apply
         with:
-          dir: .github/terraform
+          dir: .github/terraform/web-server
           workspace: ${{ env.workspace }}
           variables: |-
             image: nginx:latest
-            optional:
       - name: Validate apply
         run: |
           status="$(curl -fsSL -o /dev/null -w "%{http_code}" http://localhost:8000)"
@@ -53,11 +52,10 @@ jobs:
       - name: Destroy Terraform resources
         uses: ./destroy
         with:
-          dir: .github/terraform
+          dir: .github/terraform/web-server
           workspace: ${{ env.workspace }}
           variables: |-
             image: nginx:latest
-            optional:
       - name: Validate destroy
         run: |
           rc=0
@@ -69,7 +67,7 @@ jobs:
           fi
 
   test-undeclared-variable:
-    name: Test
+    name: Test Undeclared Variable
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -84,35 +82,13 @@ jobs:
         id: terraform
         uses: ./apply
         with:
-          dir: .github/terraform
-          workspace: ${{ env.workspace }}
+          dir: .github/terraform/input-output
           variables: |-
-            image: nginx:latest
+            required: {"key", "value"}
             dne: value undeclared for variable
           undeclared: |
             - dne
-      # - name: Validate apply
-      #   run: |
-      #     status="$(curl -fsSL -o /dev/null -w "%{http_code}" http://localhost:8000)"
-      #     if [[ "$status" -ne 200 ]]; then
-      #         echo "status=$status"
-      #         docker ps
-      #         exit 1
-      #     fi
-      # - name: Destroy Terraform resources
-      #   uses: ./destroy
-      #   with:
-      #     dir: .github/terraform
-      #     workspace: ${{ env.workspace }}
-      #     variables: |-
-      #       image: nginx:latest
-      #       optional:
-      # - name: Validate destroy
-      #   run: |
-      #     rc=0
-      #     curl -fsSL http://localhost:8000 || rc=$?
-      #     if [[ "$rc" -ne 7 ]]; then
-      #         echo "rc=$rc"
-      #         docker ps
-      #         exit 1
-      #     fi
+      - name: Destroy Terraform resources
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
