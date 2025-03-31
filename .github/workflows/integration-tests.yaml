@@ -91,8 +91,8 @@ jobs:
           [[ "$outcome" == "success" ]] || exit 1
           jq -er '.optional == null' <<<"${json_kv}" || exit 1
         env:
-          outcome: ${{ steps.deploy-null.outcome }}
-          json_kv: ${{ steps.deploy-null.outputs.json-kv }}
+          outcome: ${{ steps.deploy-null-implicit.outcome }}
+          json_kv: ${{ steps.deploy-null-implicit.outputs.json-kv }}
       - name: Deploy null (explicit)
         id: deploy-null-explicit
         uses: ./apply
