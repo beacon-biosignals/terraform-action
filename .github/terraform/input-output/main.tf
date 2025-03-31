@@ -7,8 +7,8 @@ variable "optional" {
   default = null
 
   validation {
-    condition = var.optional == null || var.optional == "foo"
-    error_message = "`optional` must only be `null` or `\"foo\"`."
+    condition = var.optional == null || var.optional == "bar"
+    error_message = "`optional` must only be `null` or `\"bar\"`."
   }
 }
 

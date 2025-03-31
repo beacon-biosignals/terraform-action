@@ -84,12 +84,12 @@ jobs:
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: required
+            required: foo
         continue-on-error: true
       - name: Validate
         run: |
           [[ "$outcome" == "success" ]] || exit 1
-          jq -er '.optional == null' <<<"${json_kv}" || exit 1
+          jq -e '.optional == null' <<<"${json_kv}" >/dev/null || exit 1
         env:
           outcome: ${{ steps.deploy-null-implicit.outcome }}
           json_kv: ${{ steps.deploy-null-implicit.outputs.json-kv }}
@@ -99,13 +99,13 @@ jobs:
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: required
+            required: foo
             optional: null
         continue-on-error: true
       - name: Validate
         run: |
           [[ "$outcome" == "success" ]] || exit 1
-          jq -er '.optional == null' <<<"${json_kv}" || exit 1
+          jq -e '.optional == null' <<<"${json_kv}" >/dev/null || exit 1
         env:
           outcome: ${{ steps.deploy-null-explicit.outcome }}
           json_kv: ${{ steps.deploy-null-explicit.outputs.json-kv }}
@@ -115,32 +115,32 @@ jobs:
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: required
+            required: foo
             optional:
         continue-on-error: true
       - name: Validate
         run: |
           [[ "$outcome" == "success" ]] || exit 1
-          jq -er '.optional == null' <<<"${json_kv}" || exit 1
+          jq -e '.optional == null' <<<"${json_kv}" >/dev/null || exit 1
         env:
           outcome: ${{ steps.deploy-null-blank.outcome }}
           json_kv: ${{ steps.deploy-null-blank.outputs.json-kv }}
-      - name: Deploy null (empty string)
-        id: deploy-null-empty-string
+      - name: Deploy null (invalid)
+        id: deploy-null-invalid
         uses: ./apply
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: required
-            optional: ""
+            required: foo
+            optional: ""  # Empty string isn't null
         continue-on-error: true
       - name: Validate
         run: |
-          [[ "$outcome" == "success" ]] || exit 1
-          jq -er '.optional == null' <<<"${json_kv}" || exit 1
+          [[ "$outcome" == "failure" ]] || exit 1
+          jq -e '.optional != null' <<<"${json_kv}" >/dev/null || exit 1
         env:
-          outcome: ${{ steps.deploy-null-empty-string.outcome }}
-          json_kv: ${{ steps.deploy-null-empty-string.outputs.json-kv }}
+          outcome: ${{ steps.deploy-null-invalid.outcome }}
+          json_kv: ${{ steps.deploy-null-invalid.outputs.json-kv }}
 
 
   test-undeclared-variable:
@@ -161,8 +161,8 @@ jobs:
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: required
-            dne: value undeclared for variable
+            required: foo
+            dne: bar
         continue-on-error: true
       - name: Validate
         run: |
@@ -175,31 +175,33 @@ jobs:
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: required
-            dne: value undeclared for variable
+            required: foo
+            dne: bar
           undeclared: |
             - dne
         continue-on-error: true
       - name: Validate
         run: |
           [[ "$outcome" == "success" ]] || exit 1
+          jq -e '.dne == null' <<<"${json_kv}" >/dev/null || exit 1
         env:
           outcome: ${{ steps.deploy-undeclared-allowed.outcome }}
+          json_kv: ${{ steps.deploy-undeclared-allowed.outputs.json-kv }}
       - name: Deploy undeclared (declared)
         id: deploy-undeclared-declared
         uses: ./apply
         with:
           dir: .github/terraform/input-output
           variables: |-
-            required: required
-            optional: foo
+            required: foo
+            optional: bar
           undeclared: |
             - optional
         continue-on-error: true
       - name: Validate
         run: |
           [[ "$outcome" == "success" ]] || exit 1
-          jq -e '.optional == "foo"' <<<"${json_kv}" || exit 1
+          jq -e '.optional == "bar"' <<<"${json_kv}" >/dev/null || exit 1
         env:
           outcome: ${{ steps.deploy-undeclared-declared.outcome }}
           json_kv: ${{ steps.deploy-undeclared-declared.outputs.json-kv }}
