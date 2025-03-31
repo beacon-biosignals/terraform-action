@@ -171,7 +171,7 @@ jobs:
           outcome: ${{ steps.destroy-null-blank.outcome }}
 
       - name: Apply Null (invalid)
-        id: deploy-invalid
+        id: apply-null-invalid
         uses: ./apply
         with:
           dir: .github/terraform/input-output
