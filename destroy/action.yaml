@@ -82,11 +82,16 @@ runs:
         terraform init
         echo "::endgroup::"
 
-        if terraform workspace select "${workspace:?}"; then
-            echo "::group::terraform destroy"
-            (set -x; env "${tf_var_envs[@]}" terraform destroy -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
-            echo "::endgroup::"
+        if [[ -n "$workspace" ]]; then
+            # When the workspace doesn't exist then there are no resources to delete
+            terraform workspace select "${workspace}" || exit 0
+        fi
 
+        echo "::group::terraform destroy"
+        (set -x; env "${tf_var_envs[@]}" terraform destroy -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
+        echo "::endgroup::"
+
+        if [[ -n "$workspace" ]]; then
             # The "default" workspace always exists:
             # https://developer.hashicorp.com/terraform/language/state/workspaces#using-workspaces
             terraform workspace select default
