@@ -41,8 +41,8 @@ runs:
       run: |
         # Terraform variables
         set -eo pipefail
-        variables_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("root element must be an object") end')"
-        undeclared_json="$(yq '. // []' -o json <<<"${variables}" | jq -r 'if type == "array" then . else error("root element must be a list") end')"
+        variables_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("\"variables\" root element must be an object") end')"
+        undeclared_json="$(yq '. // []' -o json <<<"${undeclared}" | jq -r 'if type == "array" then . else error("\"undeclared\" root element must be a list") end')"
 
         # Specify our multiline output using GH action flavored heredocs
         # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
@@ -57,6 +57,7 @@ runs:
         } | tee -a "$GITHUB_OUTPUT"
       env:
         variables: ${{ inputs.variables }}
+        undeclared: ${{ inputs.undeclared }}
     - name: Terraform apply
       shell: bash
       run: |
