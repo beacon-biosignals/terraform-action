@@ -71,6 +71,10 @@ runs:
             key="$(jq -re '.key' <<<"${json}")"
             value="$(jq -re '.value | tostring' <<<"${json}")"
 
+            # Prefer using flags where possible as these will error when they define a variable
+            # which the Terraform project does not accept (possibly a typo). In some scenarios,
+            # such as deprecations, it's nice to use environmental variables which when unused
+            # do not produce these errors.
             if jq -e --arg key "$key" 'any(index($key))' <<<"${allow_undeclared_json}"; then
                 tf_var_envs+=(TF_VAR_${key}="${value}")
             else
