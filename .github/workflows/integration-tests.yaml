@@ -78,7 +78,23 @@ jobs:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
           terraform_version: "~1.9"
-      - id: deploy-null
+      - name: Deploy null (implicit)
+        id: deploy-null-implicit
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: required
+        continue-on-error: true
+      - name: Validate
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+          jq -er '.optional == null' <<<"${json_kv}" || exit 1
+        env:
+          outcome: ${{ steps.deploy-null.outcome }}
+          json_kv: ${{ steps.deploy-null.outputs.json-kv }}
+      - name: Deploy null (explicit)
+        id: deploy-null-explicit
         uses: ./apply
         with:
           dir: .github/terraform/input-output
@@ -91,8 +107,41 @@ jobs:
           [[ "$outcome" == "success" ]] || exit 1
           jq -er '.optional == null' <<<"${json_kv}" || exit 1
         env:
-          outcome: ${{ steps.deploy-null.outcome }}
-          json_kv: ${{ steps.deploy-null.outputs.json-kv }}
+          outcome: ${{ steps.deploy-null-explicit.outcome }}
+          json_kv: ${{ steps.deploy-null-explicit.outputs.json-kv }}
+      - name: Deploy null (blank)
+        id: deploy-null-blank
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: required
+            optional:
+        continue-on-error: true
+      - name: Validate
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+          jq -er '.optional == null' <<<"${json_kv}" || exit 1
+        env:
+          outcome: ${{ steps.deploy-null-blank.outcome }}
+          json_kv: ${{ steps.deploy-null-blank.outputs.json-kv }}
+      - name: Deploy null (empty string)
+        id: deploy-null-empty-string
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: required
+            optional: ""
+        continue-on-error: true
+      - name: Validate
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+          jq -er '.optional == null' <<<"${json_kv}" || exit 1
+        env:
+          outcome: ${{ steps.deploy-null-empty-string.outcome }}
+          json_kv: ${{ steps.deploy-null-empty-string.outputs.json-kv }}
+
 
   test-undeclared-variable:
     name: Test Undeclared Variable
@@ -150,5 +199,7 @@ jobs:
       - name: Validate
         run: |
           [[ "$outcome" == "success" ]] || exit 1
+          jq -e '.optional == "foo"' <<<"${json_kv}" || exit 1
         env:
           outcome: ${{ steps.deploy-undeclared-declared.outcome }}
+          json_kv: ${{ steps.deploy-undeclared-declared.outputs.json-kv }}
