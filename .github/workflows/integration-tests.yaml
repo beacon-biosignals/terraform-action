@@ -89,6 +89,8 @@ jobs:
           variables: |-
             image: nginx:latest
             dne: value undeclared for variable
+          undeclared: |
+            - dne
       # - name: Validate apply
       #   run: |
       #     status="$(curl -fsSL -o /dev/null -w "%{http_code}" http://localhost:8000)"
