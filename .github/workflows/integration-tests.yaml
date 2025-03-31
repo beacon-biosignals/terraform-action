@@ -137,7 +137,7 @@ jobs:
       - name: Validate
         run: |
           [[ "$outcome" == "failure" ]] || exit 1
-          jq -e '.optional != null' <<<"${json_kv}" >/dev/null || exit 1
+          [[ "$json_kv" == "" ]] || exit 1
         env:
           outcome: ${{ steps.deploy-null-invalid.outcome }}
           json_kv: ${{ steps.deploy-null-invalid.outputs.json-kv }}
