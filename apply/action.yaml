@@ -22,9 +22,9 @@ inputs:
     required: false
   optional-variables:
     description: >-
-      YAML or JSON object containing key/value pairs of input values which may can be
-      ignored if the Terraform project doesn't declare them. Typically, users should prefer
-      using `variables` instead.
+      YAML or JSON object containing key/value pairs of input values which will be ignored
+      if the Terraform project doesn't declare them. Typically, users should prefer using
+      `variables` instead.
     required: false
   token:
     description: The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub.
