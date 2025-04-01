@@ -308,3 +308,47 @@ jobs:
           [[ "$outcome" == "success" ]] || exit 1
         env:
           outcome: ${{ steps.destroy-undeclared-declared.outcome }}
+
+  test-duplicate-variable:
+    name: Test Duplicate Variable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
+          # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
+          terraform_version: "~1.9"
+
+      - name: Apply
+        id: apply
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+          optional-variables: |-
+            required: bar
+        continue-on-error: true
+      - name: Validate Apply
+        run: |
+          [[ "$outcome" == "failure" ]] || exit 1
+        env:
+          outcome: ${{ steps.apply.outcome }}
+      - name: Destroy
+        id: destroy
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+          optional-variables: |-
+            required: bar
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "failure" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy.outcome }}
