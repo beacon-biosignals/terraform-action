@@ -15,7 +15,16 @@ inputs:
     description: Boolean which specifies if a state lock is to be held during the operation.
     default: "true"
   variables:
-    description: YAML or JSON object containing key/value pairs specifying input values.
+    description: >-
+      YAML or JSON object containing key/value pairs specifying input values. Any variables
+      specified here must be declared by the Terraform project or otherwise an error will
+      be thrown.
+    required: false
+  optional-variables:
+    description: >-
+      YAML or JSON object containing key/value pairs of input values which will be ignored
+      if the Terraform project doesn't declare them. Typically, users should prefer using
+      `variables` instead.
     required: false
   token:
     description: The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub.
@@ -36,33 +45,57 @@ runs:
       run: |
         # Terraform variables
         set -eo pipefail
-        variables_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("root element must be an object") end')"
+        required_vars_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("\"variables\" root element must be an object") end')"
+        optional_vars_json="$(yq '. // {}' -o json <<<"${optional_variables}" | jq -r 'if type == "object" then . else error("\"optional-variables\" root element must be an object") end')"
+
+        # Variables may only be defined once in either of the input variable maps
+        duplicate_str="$(jq -nr --argjson req "$required_vars_json" --argjson opt "$optional_vars_json" '($req | keys) - (($req | keys) - ($opt | keys)) | join(", ")')"
+        if [[ -n "$duplicate_str" ]]; then
+            echo "Input variables must not be defined in both \`variables\` and \`optional-variables\`. Duplicates found: $duplicate_str" >&2
+            exit 1
+        fi
 
         # Specify our multiline output using GH action flavored heredocs
         # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
         {
-            echo "json<<EOF"
-            jq <<<"${variables_json}"
+            echo "required-json<<EOF"
+            jq <<<"${required_vars_json}"
+            echo "EOF"
+
+            echo "optional-json<<EOF"
+            jq <<<"${optional_vars_json}"
             echo "EOF"
         } | tee -a "$GITHUB_OUTPUT"
       env:
         variables: ${{ inputs.variables }}
+        optional_variables: ${{ inputs.optional-variables }}
     - name: Terraform apply
       shell: bash
       run: |
         # Execute
         set -eo pipefail
 
-        # Convert JSON variables into CLI flags. We'll remove entries with `null` values as we cannot
-        # pass those into Terraform:
+        # Convert JSON variables into CLI flags or environmental variables. We'll remove
+        # entries with `null` values as we cannot pass those into Terraform:
         # https://github.com/hashicorp/terraform/issues/29078
+        #
+        # Prefer using flags where possible as these will error when they define a variable
+        # which the Terraform project does not accept (possibly a typo). In some scenarios,
+        # such as deprecations, it's nice to use environmental variables which when
+        # undeclared in the project do not produce these errors.
+        # https://github.com/hashicorp/terraform/issues/22004#issuecomment-783757089
         #
         # TODO: Add tests for JSON lists and values with spaces. If you aren't very careful can end up
         # with `'-var=foo="a b"'` which looks like a positional argument to terraform.
-        var_flags=()
+        tf_var_flags=()
         while read -r var; do
-            var_flags+=(-var "${var:?}")
-        done < <(jq -r 'to_entries[] | select(.value != null) | "\(.key)=\(.value | tostring)"' <<<"${variables_json}")
+            tf_var_flags+=(-var "${var:?}")
+        done < <(jq -r 'to_entries[] | select(.value != null) | "\(.key)=\(.value | tostring)"' <<<"${required_vars_json}")
+
+        tf_var_envs=()
+        while read -r env; do
+            tf_var_envs+=("${env:?}")
+        done < <(jq -r 'to_entries[] | select(.value != null) | "TF_VAR_\(.key)=\(.value | tostring)"' <<<"${optional_vars_json}")
 
         echo "::group::terraform init"
         terraform init
@@ -75,7 +108,7 @@ runs:
         fi
 
         echo "::group::terraform apply"
-        (set -x; terraform apply -auto-approve -lock="$lock" -input=false "${var_flags[@]}")
+        (set -x; env "${tf_var_envs[@]}" terraform apply -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
         echo "::endgroup::"
       env:
         # Allow HTTPS token access to remote modules. Using environmental variables to
@@ -86,7 +119,8 @@ runs:
 
         workspace: ${{ inputs.workspace }}
         lock: ${{ inputs.lock }}
-        variables_json: ${{ steps.variables.outputs.json }}
+        required_vars_json: ${{ steps.variables.outputs.required-json }}
+        optional_vars_json: ${{ steps.variables.outputs.optional-json }}
       working-directory: ${{ inputs.dir }}
     - name: Terraform outputs
       id: outputs

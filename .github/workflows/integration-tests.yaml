@@ -21,8 +21,8 @@ env:
                 'unknown') }}
 
 jobs:
-  test:
-    name: Test
+  test-web-server:
+    name: Test Web Server
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -37,11 +37,10 @@ jobs:
         id: terraform
         uses: ./apply
         with:
-          dir: .github/terraform
+          dir: .github/terraform/web-server
           workspace: ${{ env.workspace }}
           variables: |-
             image: nginx:latest
-            optional:
       - name: Validate apply
         run: |
           status="$(curl -fsSL -o /dev/null -w "%{http_code}" http://localhost:8000)"
@@ -53,11 +52,10 @@ jobs:
       - name: Destroy Terraform resources
         uses: ./destroy
         with:
-          dir: .github/terraform
+          dir: .github/terraform/web-server
           workspace: ${{ env.workspace }}
           variables: |-
             image: nginx:latest
-            optional:
       - name: Validate destroy
         run: |
           rc=0
@@ -67,3 +65,290 @@ jobs:
               docker ps
               exit 1
           fi
+
+  test-null-variable:
+    name: Test Null Variable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
+          # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
+          terraform_version: "~1.9"
+
+      - name: Apply Null (implicit)
+        id: apply-null-implicit
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+        continue-on-error: true
+      - name: Validate Apply
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+          jq -e '.optional == null' <<<"${json_kv}" >/dev/null || exit 1
+        env:
+          outcome: ${{ steps.apply-null-implicit.outcome }}
+          json_kv: ${{ steps.apply-null-implicit.outputs.json-kv }}
+      - name: Destroy Null (implicit)
+        id: destroy-null-implicit
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-null-implicit.outcome }}
+
+      - name: Apply Null (explicit)
+        id: apply-null-explicit
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional: null
+        continue-on-error: true
+      - name: Validate Apply
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+          jq -e '.optional == null' <<<"${json_kv}" >/dev/null || exit 1
+        env:
+          outcome: ${{ steps.apply-null-explicit.outcome }}
+          json_kv: ${{ steps.apply-null-explicit.outputs.json-kv }}
+      - name: Destroy Null (explicit)
+        id: destroy-null-explicit
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional: null
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-null-explicit.outcome }}
+
+      - name: Apply Null (blank)
+        id: apply-null-blank
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional:
+        continue-on-error: true
+      - name: Validate Apply
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+          jq -e '.optional == null' <<<"${json_kv}" >/dev/null || exit 1
+        env:
+          outcome: ${{ steps.apply-null-blank.outcome }}
+          json_kv: ${{ steps.apply-null-blank.outputs.json-kv }}
+      - name: Destroy Null (blank)
+        id: destroy-null-blank
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional:
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-null-blank.outcome }}
+
+      - name: Apply Null (invalid)
+        id: apply-null-invalid
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional: ""  # Empty string isn't null
+        continue-on-error: true
+      - name: Validate Apply
+        run: |
+          [[ "$outcome" == "failure" ]] || exit 1
+          [[ "$json_kv" == "" ]] || exit 1
+        env:
+          outcome: ${{ steps.apply-null-invalid.outcome }}
+          json_kv: ${{ steps.apply-null-invalid.outputs.json-kv }}
+      - name: Destroy Null (invalid)
+        id: destroy-null-invalid
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            optional: ""  # Empty string isn't null
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-null-blank.outcome }}
+
+  test-undeclared-variable:
+    name: Test Undeclared Variable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
+          # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
+          terraform_version: "~1.9"
+
+      - name: Apply Undeclared (failure)
+        id: apply-undeclared-failure
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            dne: bar
+        continue-on-error: true
+      - name: Validate Apply
+        run: |
+          [[ "$outcome" == "failure" ]] || exit 1
+        env:
+          outcome: ${{ steps.apply-undeclared-failure.outcome }}
+      - name: Destroy Undeclared (failure)
+        id: destroy-undeclared-failure
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+            dne: bar
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "failure" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-undeclared-failure.outcome }}
+
+      - name: Apply Undeclared (allowed)
+        id: apply-undeclared-allowed
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+          optional-variables: |-
+            dne: bar
+        continue-on-error: true
+      - name: Validate Apply
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+          jq -e '.dne == null' <<<"${json_kv}" >/dev/null || exit 1
+        env:
+          outcome: ${{ steps.apply-undeclared-allowed.outcome }}
+          json_kv: ${{ steps.apply-undeclared-allowed.outputs.json-kv }}
+      - name: Destroy Undeclared (allowed)
+        id: destroy-undeclared-allowed
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+          optional-variables: |-
+            dne: bar
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-undeclared-allowed.outcome }}
+
+      - name: Apply Undeclared (declared)
+        id: apply-undeclared-declared
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+          optional-variables: |-
+            optional: bar  # Pretend like `dne` was defined within the Terraform project
+        continue-on-error: true
+      - name: Validate
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+          jq -e '.optional == "bar"' <<<"${json_kv}" >/dev/null || exit 1
+        env:
+          outcome: ${{ steps.apply-undeclared-declared.outcome }}
+          json_kv: ${{ steps.apply-undeclared-declared.outputs.json-kv }}
+      - name: Destroy Undeclared (declared)
+        id: destroy-undeclared-declared
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+          optional-variables: |-
+            optional: bar  # Pretend like `dne` was defined within the Terraform project
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "success" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy-undeclared-declared.outcome }}
+
+  test-duplicate-variable:
+    name: Test Duplicate Variable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
+          # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
+          terraform_version: "~1.9"
+
+      - name: Apply
+        id: apply
+        uses: ./apply
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+          optional-variables: |-
+            required: bar
+        continue-on-error: true
+      - name: Validate Apply
+        run: |
+          [[ "$outcome" == "failure" ]] || exit 1
+        env:
+          outcome: ${{ steps.apply.outcome }}
+      - name: Destroy
+        id: destroy
+        uses: ./destroy
+        with:
+          dir: .github/terraform/input-output
+          variables: |-
+            required: foo
+          optional-variables: |-
+            required: bar
+        continue-on-error: true
+      - name: Validate Destroy
+        run: |
+          [[ "$outcome" == "failure" ]] || exit 1
+        env:
+          outcome: ${{ steps.destroy.outcome }}
