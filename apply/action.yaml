@@ -48,10 +48,10 @@ runs:
         required_vars_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("\"variables\" root element must be an object") end')"
         optional_vars_json="$(yq '. // {}' -o json <<<"${optional_variables}" | jq -r 'if type == "object" then . else error("\"optional-variables\" root element must be an object") end')"
 
-        # Keys may only be defined once in either of the input lists
-        duplicate_vars_str="$(jq -n --argjson req "$required_json" --argjson opt "$optional_json" '($req | keys) - (($req | keys) - ($opt | keys)) | join(", ")')"
-        if [[ -n "$duplicate_vars_str" ]]; then
-            echo "Input variables must not be defined in both \`variables\` and `optional-variables\`. Duplicates found: $duplicate_vars_str" >&2
+        # Keys may only be defined once in either of the input variable maps
+        duplicate_str="$(jq -n --argjson req "$required_vars_json" --argjson opt "$optional_vars_json" '($req | keys) - (($req | keys) - ($opt | keys)) | join(", ")')"
+        if [[ -n "$duplicate_str" ]]; then
+            echo "Input variables must not be defined in both \`variables\` and `optional-variables\`. Duplicates found: $duplicate_str" >&2
             exit 1
         fi
 
@@ -83,6 +83,7 @@ runs:
         # which the Terraform project does not accept (possibly a typo). In some scenarios,
         # such as deprecations, it's nice to use environmental variables which when
         # undeclared in the project do not produce these errors.
+        # https://github.com/hashicorp/terraform/issues/22004#issuecomment-783757089
         #
         # TODO: Add tests for JSON lists and values with spaces. If you aren't very careful can end up
         # with `'-var=foo="a b"'` which looks like a positional argument to terraform.
