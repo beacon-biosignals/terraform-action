@@ -250,9 +250,8 @@ jobs:
           dir: .github/terraform/input-output
           variables: |-
             required: foo
+          optional-variables: |-
             dne: bar
-          allow-undeclared: |
-            - dne
         continue-on-error: true
       - name: Validate Apply
         run: |
@@ -268,9 +267,8 @@ jobs:
           dir: .github/terraform/input-output
           variables: |-
             required: foo
+          optional-variables: |-
             dne: bar
-          allow-undeclared: |
-            - dne
         continue-on-error: true
       - name: Validate Destroy
         run: |
@@ -285,9 +283,8 @@ jobs:
           dir: .github/terraform/input-output
           variables: |-
             required: foo
+          optional-variables: |-
             optional: bar  # Pretend like `dne` was defined within the Terraform project
-          allow-undeclared: |
-            - optional
         continue-on-error: true
       - name: Validate
         run: |
@@ -303,9 +300,8 @@ jobs:
           dir: .github/terraform/input-output
           variables: |-
             required: foo
+          optional-variables: |-
             optional: bar  # Pretend like `dne` was defined within the Terraform project
-          allow-undeclared: |
-            - optional
         continue-on-error: true
       - name: Validate Destroy
         run: |

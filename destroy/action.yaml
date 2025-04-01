@@ -17,12 +17,16 @@ inputs:
     description: Boolean which specifies if a state lock is to be held during the operation.
     default: "true"
   variables:
-    description: YAML or JSON object containing key/value pairs specifying input values.
-    required: false
-  allow-undeclared:
     description: >-
-      YAML or JSON list containing the names of variable keys which may safely be ignored
-      when they are specified as input but are undeclared within the called Terraform project.
+      YAML or JSON object containing key/value pairs specifying input values. Any variables
+      specified here must be declared by the Terraform project or otherwise an error will
+      be thrown.
+    required: false
+  optional-variables:
+    description: >-
+      YAML or JSON object containing key/value pairs of input values which may can be
+      ignored if the Terraform project doesn't declare them. Typically, users should prefer
+      using `variables` instead.
     required: false
   token:
     description: The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub.
@@ -36,23 +40,30 @@ runs:
       run: |
         # Terraform variables
         set -eo pipefail
-        variables_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("\"variables\" root element must be an object") end')"
-        allow_undeclared_json="$(yq '. // []' -o json <<<"${allow_undeclared}" | jq -r 'if type == "array" then . else error("\"undeclared\" root element must be a list") end')"
+        required_vars_json="$(yq '. // {}' -o json <<<"${variables}" | jq -r 'if type == "object" then . else error("\"variables\" root element must be an object") end')"
+        optional_vars_json="$(yq '. // {}' -o json <<<"${optional_variables}" | jq -r 'if type == "object" then . else error("\"optional-variables\" root element must be an object") end')"
+
+        # Keys may only be defined once in either of the input lists
+        duplicate_vars_str="$(jq -n --argjson req "$required_json" --argjson opt "$optional_json" '($req | keys) - (($req | keys) - ($opt | keys)) | join(", ")')"
+        if [[ -n "$duplicate_vars_str" ]]; then
+            echo "Input variables must not be defined in both \`variables\` and `optional-variables\`. Duplicates found: $duplicate_vars_str" >&2
+            exit 1
+        fi
 
         # Specify our multiline output using GH action flavored heredocs
         # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
         {
-            echo "variables-json<<EOF"
-            jq <<<"${variables_json}"
+            echo "required-json<<EOF"
+            jq <<<"${required_vars_json}"
             echo "EOF"
 
-            echo "allow-undeclared-json<<EOF"
-            jq <<<"${allow_undeclared_json}"
+            echo "optional-json<<EOF"
+            jq <<<"${optional_vars_json}"
             echo "EOF"
         } | tee -a "$GITHUB_OUTPUT"
       env:
         variables: ${{ inputs.variables }}
-        allow_undeclared: ${{ inputs.allow-undeclared }}
+        optional_variables: ${{ inputs.optional-variables }}
     - name: Terraform destroy
       shell: bash
       run: |
@@ -63,24 +74,22 @@ runs:
         # entries with `null` values as we cannot pass those into Terraform:
         # https://github.com/hashicorp/terraform/issues/29078
         #
+        # Prefer using flags where possible as these will error when they define a variable
+        # which the Terraform project does not accept (possibly a typo). In some scenarios,
+        # such as deprecations, it's nice to use environmental variables which when
+        # undeclared in the project do not produce these errors.
+        #
         # TODO: Add tests for JSON lists and values with spaces. If you aren't very careful can end up
         # with `'-var=foo="a b"'` which looks like a positional argument to terraform.
         tf_var_flags=()
-        tf_var_envs=()
-        while read -r json; do
-            key="$(jq -re '.key' <<<"${json}")"
-            value="$(jq -re '.value | tostring' <<<"${json}")"
+        while read -r var; do
+            tf_var_flags+=(-var "${var:?}")
+        done < <(jq -r 'to_entries[] | select(.value != null) | "\(.key)=\(.value | tostring)"' <<<"${required_vars_json}")
 
-            # Prefer using flags where possible as these will error when they define a variable
-            # which the Terraform project does not accept (possibly a typo). In some scenarios,
-            # such as deprecations, it's nice to use environmental variables which when unused
-            # do not produce these errors.
-            if jq -e --arg key "$key" 'any(index($key))' <<<"${allow_undeclared_json}"; then
-                tf_var_envs+=(TF_VAR_${key}="${value}")
-            else
-                tf_var_flags+=(-var "${key}=${value}")
-            fi
-        done < <(jq -cr 'to_entries[] | select(.value != null)' <<<"${variables_json}")
+        tf_var_envs=()
+        while read -r env; do
+            tf_var_envs+=("${env:?}")
+        done < <(jq -r 'to_entries[] | select(.value != null) | "TF_VAR_\(.key)=\(.value | tostring)"' <<<"${optional_vars_json}")
 
         echo "::group::terraform init"
         terraform init
@@ -113,6 +122,6 @@ runs:
 
         workspace: ${{ inputs.workspace }}
         lock: ${{ inputs.lock }}
-        variables_json: ${{ steps.variables.outputs.variables-json }}
-        allow_undeclared_json: ${{ steps.variables.outputs.allow-undeclared-json }}
+        required_vars_json: ${{ steps.variables.outputs.required-json }}
+        optional_vars_json: ${{ steps.variables.outputs.optional-json }}
       working-directory: ${{ inputs.dir }}
