@@ -46,7 +46,7 @@ runs:
         # Variables may only be defined once in either of the input variable maps
         duplicate_str="$(jq -n --argjson req "$required_vars_json" --argjson opt "$optional_vars_json" '($req | keys) - (($req | keys) - ($opt | keys)) | join(", ")')"
         if [[ -n "$duplicate_str" ]]; then
-            echo "Input variables must not be defined in both \`variables\` and `optional-variables\`. Duplicates found: $duplicate_str" >&2
+            echo "Input variables must not be defined in both \`variables\` and \`optional-variables\`. Duplicates found: $duplicate_str" >&2
             exit 1
         fi
 
