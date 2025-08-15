@@ -25,7 +25,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: hashicorp/setup-terraform@v3
         with:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
@@ -48,7 +48,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: hashicorp/setup-terraform@v3
         with:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
