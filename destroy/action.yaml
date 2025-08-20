@@ -28,6 +28,11 @@ inputs:
       if the Terraform project doesn't declare them. Typically, users should prefer using
       `variables` instead.
     required: false
+  log-level:
+    description: >-
+      Set the verbosity of the Terraform logs: TRACE, DEBUG, INFO, WARN, or ERROR.
+    default: "INFO"
+    required: false
   token:
     description: The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub.
     default: ${{ github.token }}
@@ -50,6 +55,11 @@ runs:
             exit 1
         fi
 
+        if [[ ! "$log_level" =~ ^(TRACE|DEBUG|INFO|WARN|ERROR)$ ]]; then
+            echo "Input variable \`log-level\` must be one of: TRACE, DEBUG, INFO, WARN, or ERROR." >&2
+            exit 1
+        fi
+
         # Specify our multiline output using GH action flavored heredocs
         # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
         {
@@ -64,6 +74,7 @@ runs:
       env:
         variables: ${{ inputs.variables }}
         optional_variables: ${{ inputs.optional-variables }}
+        log_level: ${{ inputs.log-level }}
     - name: Terraform destroy
       shell: bash
       run: |
@@ -121,6 +132,7 @@ runs:
         GIT_CONFIG_KEY_0: url.https://git:${{ inputs.token }}@github.com.insteadOf
         GIT_CONFIG_VALUE_0: https://github.com
 
+        TF_LOG: ${{ inputs.log-level }}
         workspace: ${{ inputs.workspace }}
         lock: ${{ inputs.lock }}
         required_vars_json: ${{ steps.variables.outputs.required-json }}
