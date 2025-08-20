@@ -13,6 +13,7 @@ The `terraform-action/apply` action supports the following inputs:
 | `lock`               | Boolean which specifies if a state lock is to be held during the operation. May be set to `false` if utilizing GitHub action concurrency groups to restrict access. Defaults to `"true"` | No | `"true"` |
 | `variables`          | YAML or JSON object containing key/value pairs specifying [input values](https://developer.hashicorp.com/terraform/language/values/variables). Any variables specified here must be declared by the Terraform project or otherwise an error will be thrown. | No | <pre><code class="language-yaml">image_id: ...&#10;availability_zone_names:&#10;  - us-east-1a&#10;  - us-east-1b</code></pre> |
 | `optional-variables` | YAML or JSON object containing key/value pairs of input values which will be ignored if the Terraform project doesn't declare them. Typically, users should prefer using `variables` instead. | No |<pre><code class="language-yaml">az_names:&#10;  - us-east-1a&#10;  - us-east-1b</code></pre> |
+| `log-level` | Set the verbosity of the Terraform logs: TRACE, DEBUG, INFO, WARN, or ERROR. | No | `"DEBUG"` |
 | `token`              | The GitHub PAT token to use for accessing remote Terraform modules stored on GitHub. Defaults to `${{ github.token }}` | No | |
 
 ## Outputs
