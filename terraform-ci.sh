@@ -2,9 +2,9 @@
 
 # https://github.com/orgs/community/discussions/26311#discussioncomment-7571648
 #
-# terraform needs time to clean up after itself.  if it receives a second signal
+# Terraform needs time to clean up after itself.  If it receives a second signal
 # after shutdown is initiated, it may exit immediately leaving dirty state,
-# lockfiles, or partially applied resources.  this harness (copied from the
+# lockfiles, or partially applied resources.  This harness (copied from the
 # discussion linked above) sends at most one signal to terraform
 
 COUNTER=0
@@ -50,12 +50,7 @@ _other() {
 trap _term SIGTERM
 trap _int SIGINT
 
-trap _other SIGHUP
-trap _other SIGUSR1
-trap _other SIGUSR2
-trap _other SIGABRT
-trap _other SIGQUIT
-trap _other SIGPIPE
+trap _other SIGHUP SIGUSR1 SIGUSR2 SIGABRT SIGQUIT SIGPIPE
 
 terraform "$@" &
 child=$!
