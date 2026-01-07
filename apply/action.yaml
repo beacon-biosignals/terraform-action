@@ -108,7 +108,8 @@ runs:
         fi
 
         echo "::group::terraform apply"
-        (set -x; exec env "${tf_var_envs[@]}" terraform apply -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
+        set -x
+        exec env "${tf_var_envs[@]}" terraform apply -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}"
         echo "::endgroup::"
       env:
         # Allow HTTPS token access to remote modules. Using environmental variables to
