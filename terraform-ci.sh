@@ -18,7 +18,7 @@ _term() {
     echo "Already passed signal to terraform"
   fi
 
-  let COUNTER++
+  (( COUNTER++ )) || true
 }
 
 _int() {
@@ -31,7 +31,7 @@ _int() {
     echo "Already passed signal to terraform"
   fi
 
-  let COUNTER++
+  (( COUNTER++ )) || true
 }
 
 _other() {
@@ -44,7 +44,7 @@ _other() {
     echo "Already passed signal to terraform"
   fi
 
-  let COUNTER++
+  (( COUNTER++ )) || true
 }
 
 trap _term SIGTERM
