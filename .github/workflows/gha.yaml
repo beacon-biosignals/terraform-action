@@ -10,8 +10,11 @@ jobs:
     name: Lint
     # These permissions are needed to:
     # - Checkout the Git repo (`contents: read`)
+    # - Read and comment on PRs
     permissions:
       contents: read
+      pull-requests: write
+      checks: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -23,3 +26,8 @@ jobs:
         with:
           fail_level: error
           filter_mode: nofilter  # Post results on all results and not just changed files
+          reporter: github-pr-review
+      - uses: reviewdog/action-shellcheck@4c07458293ac342d477251099501a718ae5ef86e # v1.32.0
+        with:
+          fail_level: warning
+          reporter: github-pr-review

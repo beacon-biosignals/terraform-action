@@ -102,18 +102,8 @@ runs:
         fi
 
         echo "::group::terraform destroy"
-        (set -x; env "${tf_var_envs[@]}" terraform destroy -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
-        echo "::endgroup::"
-
-        if [[ -n "$workspace" ]]; then
-            # The "default" workspace always exists:
-            # https://developer.hashicorp.com/terraform/language/state/workspaces#using-workspaces
-            terraform workspace select default
-
-            echo "::group::terraform workspace delete"
-            terraform workspace delete "${workspace:?}"
-            echo "::endgroup::"
-        fi
+        set -x
+        exec env "${tf_var_envs[@]}" ${{ github.action_path }}/../terraform-ci.sh destroy -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}"
       env:
         # Allow HTTPS token access to remote modules. Using environmental variables to
         # only temporarily modify the Git configuration.
@@ -125,4 +115,15 @@ runs:
         lock: ${{ inputs.lock }}
         required_vars_json: ${{ steps.variables.outputs.required-json }}
         optional_vars_json: ${{ steps.variables.outputs.optional-json }}
+      working-directory: ${{ inputs.dir }}
+    - name: Cleanup workspace
+      if: ${{ inputs.workspace }}
+      shell: bash
+      run: |
+        # The "default" workspace always exists:
+        # https://developer.hashicorp.com/terraform/language/state/workspaces#using-workspaces
+        terraform workspace select default
+        terraform workspace delete "${workspace:?}"
+      env:
+        workspace: ${{ inputs.workspace }}
       working-directory: ${{ inputs.dir }}

@@ -108,8 +108,8 @@ runs:
         fi
 
         echo "::group::terraform apply"
-        (set -x; env "${tf_var_envs[@]}" terraform apply -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
-        echo "::endgroup::"
+        set -x
+        exec env "${tf_var_envs[@]}" "${{ github.action_path }}/../terraform-ci.sh" apply -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}"
       env:
         # Allow HTTPS token access to remote modules. Using environmental variables to
         # only temporarily modify the Git configuration.
