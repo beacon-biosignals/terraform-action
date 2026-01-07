@@ -102,7 +102,7 @@ runs:
         fi
 
         echo "::group::terraform destroy"
-        (set -x; env "${tf_var_envs[@]}" terraform destroy -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
+        (set -x; exec env "${tf_var_envs[@]}" terraform destroy -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
         echo "::endgroup::"
 
         if [[ -n "$workspace" ]]; then
