@@ -29,3 +29,4 @@ jobs:
       - uses: reviewdog/action-shellcheck@4c07458293ac342d477251099501a718ae5ef86e # v1.32.0
         with:
           fail_level: warning
+          reporter: github-pr-review
