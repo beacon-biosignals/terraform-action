@@ -24,3 +24,5 @@ jobs:
           fail_level: error
           filter_mode: nofilter  # Post results on all results and not just changed files
       - uses: reviewdog/action-shellcheck@4c07458293ac342d477251099501a718ae5ef86e # v1.32.0
+        with:
+          fail_level: warn
