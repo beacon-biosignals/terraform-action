@@ -107,14 +107,8 @@ runs:
             echo "::endgroup::"
         fi
 
-        echo "::group::terraform plan"
-        outpath="$(mktemp /tmp/tfplan.XXXX.json)"
-        (set -x; env "${tf_var_envs[@]}" terraform plan -out="${outpath}" -lock="$lock" -input=false "${tf_var_flags[@]}")
-        echo "::endgroup::"
-
         echo "::group::terraform apply"
-        # exec this so that it will receive any sigints sent via gha cancellation
-        exec terraform apply -auto-approve -lock="$lock" "$outpath"
+        (set -x; exec env "${tf_var_envs[@]}" terraform apply -auto-approve -lock="$lock" -input=false "${tf_var_flags[@]}")
         echo "::endgroup::"
       env:
         # Allow HTTPS token access to remote modules. Using environmental variables to
