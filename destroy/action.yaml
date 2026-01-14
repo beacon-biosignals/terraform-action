@@ -65,6 +65,7 @@ runs:
         variables: ${{ inputs.variables }}
         optional_variables: ${{ inputs.optional-variables }}
     - name: Terraform destroy
+      id: destroy
       shell: bash
       run: |
         # Destroy
@@ -99,6 +100,7 @@ runs:
         if [[ -n "$workspace" ]]; then
             # When the workspace doesn't exist then there are no resources to delete
             terraform workspace select "${workspace}" || exit 0
+            echo "workspace=$workspace" >> "$GITHUB_OUTPUT"
         fi
 
         echo "::group::terraform destroy"
@@ -117,7 +119,7 @@ runs:
         optional_vars_json: ${{ steps.variables.outputs.optional-json }}
       working-directory: ${{ inputs.dir }}
     - name: Cleanup workspace
-      if: ${{ inputs.workspace }}
+      if: ${{ steps.destroy.outputs.workspace }}
       shell: bash
       run: |
         # The "default" workspace always exists:
@@ -125,5 +127,5 @@ runs:
         terraform workspace select default
         terraform workspace delete "${workspace:?}"
       env:
-        workspace: ${{ inputs.workspace }}
+        workspace: ${{ steps.destroy.outputs.workspace }}
       working-directory: ${{ inputs.dir }}
