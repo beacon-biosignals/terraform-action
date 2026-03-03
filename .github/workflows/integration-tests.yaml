@@ -28,7 +28,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
@@ -73,7 +73,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
@@ -208,7 +208,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
@@ -316,7 +316,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           # Avoiding using Terraform 1.10 at this time as it does not work well with `apply --auto-approve`:
           # https://github.com/hashicorp/terraform/issues/36106#issuecomment-2506181760
